@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gamers Vicianos: A Bolha Assassina</title>
+<style>
+  :root{
+    --bg:#111;
+    --panel:#0f1724;
+    --light-blue:#bfe8ff;
+  }
+  body{ margin:0; background:linear-gradient(#0b0f14,#071018); color:#eee; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial; }
+  #gameWrap{ display:flex; gap:12px; padding:12px; align-items:flex-start; }
+  canvas{ background:#07101a; border:8px solid var(--light-blue); display:block; }
+  #ui{ width:320px; }
+  h1{ margin:0 0 6px 0; font-size:18px }
+  .subtitle{ color:#9fc7ff; margin-bottom:10px; font-size:12px }
+  .panel{ background:rgba(0,0,0,0.45); padding:10px; border-radius:8px; margin-bottom:10px; box-shadow:0 6px 18px rgba(0,0,0,0.6); }
+  .stat{ font-size:13px; margin:6px 0; }
+  .timeline{ display:flex; gap:6px; align-items:center; justify-content:space-between; }
+  .badge{ padding:4px 8px; border-radius:999px; background:#0b1220; font-size:12px; }
+  .popup { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); z-index:9999; }
+  .popup .card{ width:720px; max-width:95%; background:#071127; padding:18px; border-radius:10px; color:#e6f4ff; }
+  .btn{ background: #2aa2ff; color:#022; padding:8px 12px; border-radius:8px; cursor:pointer; border:none; font-weight:700; }
+  .btn.secondary{ background:#0f1724; color:#9fc7ff; border:1px solid #184a73; }
+  .upgradeOption{ cursor:pointer; padding:10px; margin:6px 0; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03); }
+  .selected{ outline:2px solid gold; }
+  #teamSelect { display:flex; gap:8px; margin:10px 0; }
+  .teamBtn{ flex:1; padding:10px; border-radius:8px; cursor:pointer; color:#022; font-weight:700; }
+  .teamAzul{ background:#5aa8ff; }
+  .teamVerde{ background:#6ad76a; }
+  .teamCinza{ background:#bdbdbd; }
+  .teamVermelho{ background:#ff6a6a; }
+  .small{ font-size:12px; color:#bcd }
+  canvas, .panel { box-shadow: 0 8px 30px rgba(0,0,0,0.7); }
+</style>
+</head>
+<body>
+<div id="gameWrap">
+  <canvas id="game" width="1000" height="700"></canvas>
+  <div id="ui">
+    <div class="panel">
+      <h1>Gamers Vicianos</h1>
+      <div class="subtitle">A Bolha Assassina — Escolha seu time e controle o destino da geração</div>
+      <div style="display:flex; gap:6px;">
+        <div id="teamBadge" class="badge">Time: —</div>
+        <div class="badge" id="genBadge">Geração: 0/8</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="stat">Tempo restante: <span id="timer">00:00</span></div>
+      <div class="stat small">Vivos: Azul <span id="countBlue">0</span> • Verde <span id="countGreen">0</span> • Cinza <span id="countGray">0</span> • Vermelho <span id="countRed">0</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="stat"><strong>Status do seu time</strong></div>
+      <div class="stat">Máx por Geração: <span id="stat_qty">10</span></div>
+      <div class="stat">Dano por quadrado: <span id="stat_dmg">1</span></div>
+      <div class="stat">Máx HP: <span id="stat_hp">5</span></div>
+      <div class="stat">Velocidade: <span id="stat_spd">80</span> px/s</div>
+      <div style="margin-top:8px;"><button id="endGenBtn" class="btn secondary">Forçar fim da geração</button></div>
+    </div>
+
+    <div class="panel">
+      <div class="stat"><strong>Placar (total kills)</strong></div>
+      <div class="stat">Azul: <span id="scoreBlue">0</span></div>
+      <div class="stat">Verde: <span id="scoreGreen">0</span></div>
+      <div class="stat">Cinza: <span id="scoreGray">0</span></div>
+      <div class="stat">Vermelho: <span id="scoreRed">0</span></div>
+      <div class="stat small" style="margin-top:6px">TGAs coletados (final +10 pts cada): <span id="tgaBlue">0</span> / <span id="tgaGreen">0</span> / <span id="tgaGray">0</span> / <span id="tgaRed">0</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Popups -->
+<div id="initialPopup" class="popup">
+  <div class="card">
+    <h2>Bem vindo ao Gamers Vicianos! A Bolha ASSassina!</h2>
+    <p>Aqui você vai escolher um time que representa a sua empresa favorita, e vai depender da sua sorte (e escolhas) de quem vai ganhar a geração atual! São 8 rodadas, e cada uma representa a evolução dos consoles em suas gerações. Esse jogo, obiviamente, é uma brincadeira suave e todos tem a oportunidade de ganhar. Foi feito no intuito de ser divertido e zoeiro com a comunidade da GameVicio, o maior Site de Games do Brasil. Se divirtam e postem seus prints nos comentários da GameVicio!. Créditos: Junigami</p>
+    <div style="margin-top:12px;">Escolha seu time:</div>
+    <div id="teamSelect">
+      <button class="teamBtn teamAzul" data-team="blue">Azul — Play</button>
+      <button class="teamBtn teamVerde" data-team="green">Verde — Caixa</button>
+      <button class="teamBtn teamCinza" data-team="gray">Cinza — Fumaça</button>
+      <button class="teamBtn teamVermelho" data-team="red">Vermelho — Criançada</button>
+    </div>
+    <div style="margin-top:14px; display:flex; gap:8px; justify-content:flex-end;">
+      <button id="continueBtn" class="btn" disabled>Continuar</button>
+    </div>
+  </div>
+</div>
+
+<div id="upgradePopup" class="popup" style="display:none;">
+  <div class="card" id="upgradeCard">
+    <h3>Escolha 2 upgrades para a próxima geração</h3>
+    <div id="upgradeList"></div>
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
+      <button id="applyUpgrades" class="btn" disabled>Próxima Geração</button>
+    </div>
+  </div>
+</div>
+
+<div id="endPopup" class="popup" style="display:none;">
+  <div class="card">
+    <h3>Fim do Jogo</h3>
+    <div id="finalResults"></div>
+    <div style="margin-top:12px; text-align:right;">
+      <button id="restartBtn" class="btn">Reiniciar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  Protótipo Gamers Vicianos - A Bolha Assassina
+  Autor: Momo (assistente) / adaptado por Junigami
+  Observações: protótipo simples e auto-contido. Ajuste números conforme desejar.
+*/
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const W = canvas.width, H = canvas.height;
+const TILE = 40; // pixel size of square
+const TGA_SIZE = TILE * 3; // 120
+const INVULN_TIME = 0.2; // seconds
+const GEN_DURATION = 30; // seconds per generation
+const MAX_GENERATIONS = 8;
+
+const COLORS = {
+  blue: '#3ea8ff',
+  green: '#6ae86a',
+  gray: '#bdbdbd',
+  red: '#ff6a6a',
+  tga: '#ffd36a',
+  textDark: '#022'
+};
+
+let rng = (n=1)=>Math.random()*n;
+
+// Game state
+let generation = 0;
+let genTimeLeft = GEN_DURATION;
+let running = false;
+let playerTeam = null;
+let teams = ['blue','green','gray','red'];
+
+// Per-team data & stats
+let teamData = {
+  blue: { name:'Play', qtyBase:10, qtyMax:10, dmgBase:1, hpBase:5, spdBase:80, color:COLORS.blue, kills:0, tgaCount:0 },
+  green:{ name:'Caixa', qtyBase:10, qtyMax:10, dmgBase:1, hpBase:5, spdBase:80, color:COLORS.green, kills:0, tgaCount:0 },
+  gray: { name:'Fumaça', qtyBase:10, qtyMax:10, dmgBase:1, hpBase:5, spdBase:80, color:COLORS.gray, kills:0, tgaCount:0 },
+  red:  { name:'Criançada', qtyBase:10, qtyMax:10, dmgBase:1, hpBase:5, spdBase:80, color:COLORS.red, kills:0, tgaCount:0 }
+};
+
+// cumulative upgrades stored as multipliers/additions
+let upgrades = {
+  blue:{ qtyAdd:0, dmgAdd:0, hpAdd:0, spdMul:1 },
+  green:{ qtyAdd:0, dmgAdd:0, hpAdd:0, spdMul:1 },
+  gray:{ qtyAdd:0, dmgAdd:0, hpAdd:0, spdMul:1 },
+  red:{ qtyAdd:0, dmgAdd:0, hpAdd:0, spdMul:1 }
+};
+
+// Entities in field
+let entities = []; // squares and TGA objects
+
+// Utility
+function rndInt(min, max){ return Math.floor(min + Math.random()*(max-min+1)); }
+function dist(a,b){ let dx=a.x-b.x, dy=a.y-b.y; return Math.hypot(dx,dy); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+// Entity classes
+class Square {
+  constructor(team, id){
+    this.team = team;
+    this.id = id;
+    this.size = TILE;
+    this.maxHP = teamData[team].hpBase + upgrades[team].hpAdd;
+    this.hp = this.maxHP;
+    this.dmg = teamData[team].dmgBase + upgrades[team].dmgAdd;
+    this.speed = teamData[team].spdBase * upgrades[team].spdMul;
+    this.invuln = 0;
+    this.dead = false;
+    this.pos = this.randomSpawn(team);
+    this.vel = {x:0,y:0};
+    this.timeSinceHit = 999;
+    this.target = null;
+  }
+  randomSpawn(team){
+    // spawn side depending on team to give variety
+    const margin = 60;
+    let area = {
+      blue: {x:[margin, W/2 - 50], y:[margin, H-margin]},
+      green:{x:[W/2 + 20, W-margin], y:[margin, H-margin]},
+      gray: {x:[margin, W-margin], y:[margin, H/2-20]},
+      red:  {x:[margin, W-margin], y:[H/2+20, H-margin]}
+    };
+    let a = area[team] || {x:[margin,W-margin], y:[margin,H-margin]};
+    return { x: rndInt(a.x[0], a.x[1]), y: rndInt(a.y[0], a.y[1]) };
+  }
+  update(dt){
+    if(this.dead) return;
+    if(this.invuln>0) this.invuln = Math.max(0, this.invuln - dt);
+    this.timeSinceHit += dt;
+    // behavior: choose a target enemy based on team
+    this.chooseTarget();
+    // move towards target if any, else random wander
+    if(this.target){
+      this.moveTowards(this.target, dt);
+    } else {
+      // random wandering
+      if(Math.random() < 0.02) {
+        this.vel.x = (Math.random()-0.5)*50;
+        this.vel.y = (Math.random()-0.5)*50;
+      }
+      this.pos.x += this.vel.x * dt;
+      this.pos.y += this.vel.y * dt;
+    }
+    // clamp inside arena
+    this.pos.x = clamp(this.pos.x, 10, W - 10 - this.size);
+    this.pos.y = clamp(this.pos.y, 10, H - 10 - this.size);
+  }
+  chooseTarget(){
+    // find list of enemies alive
+    const enemies = entities.filter(e => e instanceof Square && e.team !== this.team && !e.dead);
+    if(enemies.length === 0){ this.target = null; return; }
+
+    if(this.team === 'blue'){
+      // disperse: prefer far enemies (so moves independently) — pick a random distant enemy
+      this.target = enemies[Math.floor(Math.random()*enemies.length)];
+    } else if(this.team === 'green'){
+      // chases weaker targets (less HP) but sometimes wanders
+      if(Math.random() < 0.15){ this.target = null; return; }
+      enemies.sort((a,b)=> (a.hp/a.maxHP) - (b.hp/b.maxHP));
+      this.target = enemies[0];
+    } else if(this.team === 'red'){
+      // moves in a group: target nearest enemy to group center
+      // group center:
+      let allies = entities.filter(e => e instanceof Square && e.team===this.team && !e.dead);
+      let cx=0, cy=0;
+      allies.forEach(a=>{cx+=a.pos.x; cy+=a.pos.y;});
+      cx/=allies.length; cy/=allies.length;
+      enemies.sort((a,b)=> dist(a,{x:cx,y:cy}) - dist(b,{x:cx,y:cy}));
+      this.target = enemies[0];
+    } else if(this.team === 'gray'){
+      // small groups: prefer nearer enemies but keep some randomness
+      let allies = entities.filter(e => e instanceof Square && e.team===this.team && !e.dead);
+      // find nearest enemy to this square
+      enemies.sort((a,b)=> dist(this,a) - dist(this,b));
+      this.target = enemies[0];
+    } else {
+      this.target = enemies[Math.floor(Math.random()*enemies.length)];
+    }
+  }
+  moveTowards(target, dt){
+    if(!target) return;
+    let dx = (target.pos.x - this.pos.x);
+    let dy = (target.pos.y - this.pos.y);
+    let d = Math.hypot(dx,dy) || 1;
+    let spd = this.speed;
+    // normalized movement
+    this.pos.x += (dx/d) * spd * dt;
+    this.pos.y += (dy/d) * spd * dt;
+  }
+  draw(ctx){
+    if(this.dead) return;
+    ctx.save();
+    ctx.translate(this.pos.x, this.pos.y);
+    // square body
+    ctx.fillStyle = teamData[this.team].color;
+    ctx.fillRect(0,0,this.size,this.size);
+    // HP number centered
+    ctx.fillStyle = '#022';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(Math.round(this.hp), this.size/2, this.size/2);
+    // invuln flash
+    if(this.invuln>0){
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0,0,this.size,this.size);
+    }
+    ctx.restore();
+  }
+  receiveDamage(amount, hitter){
+    if(this.invuln>0 || this.dead) return false;
+    this.hp -= amount;
+    // create particles & knockback
+    spawnDamageParticles(this.pos.x + this.size/2, this.pos.y + this.size/2);
+    // knockback opposite vector
+    let dx = this.pos.x - hitter.pos.x;
+    let dy = this.pos.y - hitter.pos.y;
+    let d = Math.hypot(dx,dy) || 1;
+    this.pos.x += (dx/d) * 20;
+    this.pos.y += (dy/d) * 20;
+    this.invuln = INVULN_TIME;
+    this.timeSinceHit = 0;
+    if(this.hp <= 0){
+      this.dead = true;
+      spawnExplosion(this.pos.x + this.size/2, this.pos.y + this.size/2);
+      // killer gets kill point
+      teamData[hitter.team].kills += 1;
+      // remove entity later
+      return true;
+    }
+    return false;
+  }
+}
+
+class TGA {
+  constructor(){
+    this.size = TGA_SIZE;
+    this.pos = { x: rndInt(60, W - 60 - this.size), y: rndInt(60, H - 60 - this.size) };
+    this.hp = 30 * Math.pow(1.2, generation-1); // scales each gen
+    this.dead = false;
+    this.color = COLORS.tga;
+  }
+  update(dt){}
+  draw(ctx){
+    if(this.dead) return;
+    ctx.save();
+    ctx.translate(this.pos.x, this.pos.y);
+    ctx.fillStyle = this.color;
+    ctx.fillRect(0,0,this.size,this.size);
+    // label TGA and HP
+    ctx.fillStyle = '#022';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('TGA', this.size/2, 22);
+    ctx.font = '14px Arial';
+    ctx.fillText(Math.round(this.hp), this.size/2, this.size - 12);
+    ctx.restore();
+  }
+  receiveDamage(amount, hitter){
+    this.hp -= amount;
+    spawnDamageParticles(this.pos.x + this.size/2, this.pos.y + this.size/2);
+    if(this.hp <= 0){
+      this.dead = true;
+      spawnExplosion(this.pos.x + this.size/2, this.pos.y + this.size/2);
+      // grant buff to hitter's team
+      upgrades[hitter.team].tgaTaken = (upgrades[hitter.team].tgaTaken||0) + 1;
+      teamData[hitter.team].tgaCount += 1;
+      // mark buff on team (applied on next generation)
+      // We'll store temporaryBuff on team
+      let buff = generateTgaBuff();
+      upgrades[hitter.team].pendingTgaBuff = buff;
+      return true;
+    }
+    return false;
+  }
+}
+
+// particles and explosion
+let particles = [];
+function spawnDamageParticles(x,y){
+  for(let i=0;i<8;i++){
+    particles.push({x,y,vx:(Math.random()-0.5)*80, vy:(Math.random()-0.5)*80, life:0.4 + Math.random()*0.3});
+  }
+}
+function spawnExplosion(x,y){
+  for(let i=0;i<30;i++){
+    particles.push({x,y,vx:(Math.random()-0.5)*260, vy:(Math.random()-0.5)*260, life:0.6 + Math.random()*0.6, big:true});
+  }
+}
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    let p = particles[i];
+    p.life -= dt;
+    if(p.life<=0) particles.splice(i,1);
+    else {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+    }
+  }
+}
+function drawParticles(ctx){
+  particles.forEach(p=>{
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, p.life*2));
+    ctx.fillStyle = '#fff';
+    if(p.big) ctx.fillRect(p.x-3,p.y-3,6,6);
+    else ctx.fillRect(p.x-1,p.y-1,2,2);
+    ctx.restore();
+  });
+}
+
+// TGA buff generator (randomly affects qty/dmg/hp/spd)
+function generateTgaBuff(){
+  // buff increases all 3 upgrades (qty, dmg, hp, and velocity) by 20% on top of current stats — we'll store as multiplicative factors or adds.
+  return { qtyPct:0.20, dmgPct:0.20, hpPct:0.20, spdPct:0.20 };
+}
+
+// Spawn initial entities for generation
+function spawnGeneration(){
+  entities = [];
+  // spawn squares based on teamData base and upgrades
+  teams.forEach(team=>{
+    let count = teamData[team].qtyBase + upgrades[team].qtyAdd;
+    // ensure integer, and clamp
+    count = Math.max(1, Math.round(count));
+    for(let i=0;i<count;i++){
+      const s = new Square(team, i+1);
+      entities.push(s);
+    }
+  });
+  // spawn TGA randomly (50% chance)
+  if(Math.random()<0.6){
+    entities.push(new TGA());
+  }
+  // apply pending TGA buffs to upgrades handed (these affect next gen, but in prototype we show effect next generation)
+  teams.forEach(t=>{
+    if(upgrades[t].pendingTgaBuff){
+      let b = upgrades[t].pendingTgaBuff;
+      // apply as multipliers for next gen
+      // We'll convert to additive for dmg/hp and multiplier for spd and qty
+      upgrades[t].dmgAdd += Math.round((teamData[t].dmgBase + upgrades[t].dmgAdd) * b.dmgPct);
+      upgrades[t].hpAdd += Math.round((teamData[t].hpBase + upgrades[t].hpAdd) * b.hpPct);
+      upgrades[t].qtyAdd += Math.round( (1 + upgrades[t].qtyAdd) * b.qtyPct ); // approximate
+      upgrades[t].spdMul *= (1 + b.spdPct);
+      delete upgrades[t].pendingTgaBuff;
+    }
+  });
+}
+
+// collision and combat
+function handleCollisions(){
+  // square vs square collisions
+  for(let i=0;i<entities.length;i++){
+    const a = entities[i];
+    if(!(a instanceof Square) || a.dead) continue;
+    for(let j=i+1;j<entities.length;j++){
+      const b = entities[j];
+      if(b.dead) continue;
+      // square vs square
+      if(b instanceof Square){
+        if(a.team !== b.team){
+          if(rectOverlap(a.pos.x,a.pos.y,a.size,a.size, b.pos.x,b.pos.y,b.size,b.size)){
+            // deal damage to each other (both attack on collision)
+            if(a.invuln<=0){
+              let died = a.receiveDamage(b.dmg, b);
+              if(died){
+                // remove a later (marked dead)
+              }
+            }
+            if(b.invuln<=0){
+              let died2 = b.receiveDamage(a.dmg, a);
+              if(died2){
+                // remove b later
+              }
+            }
+          }
+        }
+      } else if(b instanceof TGA){
+        // square hitting TGA
+        if(rectOverlap(a.pos.x,a.pos.y,a.size,a.size, b.pos.x,b.pos.y,b.size,b.size)){
+          if(b.hp>0){
+            b.receiveDamage(a.dmg, a);
+          }
+        }
+      }
+    }
+    // square vs TGA also other way
+    for(let k=0;k<entities.length;k++){
+      const c = entities[k];
+      if(c instanceof TGA && !c.dead){
+        if(rectOverlap(a.pos.x,a.pos.y,a.size,a.size, c.pos.x,c.pos.y,c.size,c.size)){
+          if(c.hp>0) c.receiveDamage(a.dmg, a);
+        }
+      }
+    }
+  }
+  // cleanup dead squares and TGAs fully flagged
+  // But we leave them in entities as dead for drawing (explosion done). Filter later on spawn/next gen.
+}
+
+// rect overlap helper
+function rectOverlap(x1,y1,w1,h1,x2,y2,w2,h2){
+  return !(x2 > x1 + w1 || x2 + w2 < x1 || y2 > y1 + h1 || y2 + h2 < y1);
+}
+
+// game loop
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.06, (now-last)/1000);
+  last = now;
+  if(running){
+    // update timer
+    genTimeLeft -= dt;
+    if(genTimeLeft <= 0){
+      endGeneration();
+    }
+    // update entities
+    entities.forEach(e=>{
+      if(e.update) e.update(dt);
+    });
+    // collisions
+    handleCollisions();
+    // particles
+    updateParticles(dt);
+    // check for single team remaining
+    const alive = entities.filter(e => e instanceof Square && !e.dead);
+    const aliveTeams = new Set(alive.map(s=>s.team));
+    if(aliveTeams.size <= 1 && generation>0){
+      // finish early
+      endGeneration();
+    }
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+// rendering
+function render(){
+  // clear
+  ctx.clearRect(0,0,W,H);
+  // background subtle grid?
+  // draw all entities
+  entities.forEach(e=>{
+    if(e.draw) e.draw(ctx);
+  });
+  drawParticles(ctx);
+  // top HUD drawn in DOM; canvas only shows arena
+}
+
+// start game flow
+function startGame(){
+  generation = 0;
+  running = false;
+  for(let t of teams){
+    teamData[t].kills = 0;
+    teamData[t].tgaCount = 0;
+    // reset upgrades
+    upgrades[t] = Object.assign({qtyAdd:0,dmgAdd:0,hpAdd:0,spdMul:1}, upgrades[t]||{});
+  }
+  showInitialPopup(false);
+  openInitialPopup();
+}
+
+function openInitialPopup(){
+  const p = document.getElementById('initialPopup');
+  p.style.display = 'flex';
+}
+
+function showInitialPopup(show=true){
+  document.getElementById('initialPopup').style.display = show ? 'flex' : 'none';
+}
+
+document.querySelectorAll('#teamSelect .teamBtn').forEach(btn=>{
+  btn.addEventListener('click', (e)=>{
+    document.querySelectorAll('#teamSelect .teamBtn').forEach(b=>b.style.opacity=0.6);
+    btn.style.opacity=1;
+    playerTeam = btn.dataset.team;
+    document.getElementById('continueBtn').disabled = false;
+    document.getElementById('teamBadge').innerText = 'Time: ' + teamData[playerTeam].name;
+  });
+});
+
+document.getElementById('continueBtn').addEventListener('click', ()=>{
+  showInitialPopup(false);
+  // initialize generation 1
+  generation = 0;
+  nextGeneration();
+});
+
+// generation flow
+function nextGeneration(){
+  generation++;
+  if(generation > MAX_GENERATIONS){
+    endGame();
+    return;
+  }
+  // apply upgrades already stored in upgrades (they were set at previous upgrade popup)
+  // some stats are part of teamData for display: compute effective stats
+  teams.forEach(t=>{
+    teamData[t].qtyBase = Math.max(1, teamData[t].qtyBase + 0); // base unchanged
+    // but effective qty is base + upgrades[t].qtyAdd
+  });
+  genTimeLeft = GEN_DURATION;
+  running = true;
+  spawnGeneration();
+  updateUI();
+  document.getElementById('genBadge').innerText = `Geração: ${generation}/${MAX_GENERATIONS}`;
+}
+
+function endGeneration(){
+  running = false;
+  // compute kills this gen are already added; we show pop-up with upgrades selection
+  updateUI();
+  // if last generation just ended, go to next or finish
+  if(generation >= MAX_GENERATIONS){
+    // end game immediately
+    endGame();
+    return;
+  }
+  // Show upgrades popup for player to choose 2 among random options
+  showUpgradePopup();
+}
+
+function showUpgradePopup(){
+  // generate random upgrade options to choose from (we will create a pool and let player pick 2)
+  // options: Quantity (+1..+10), Dano (+1..+10), HP (+2..+10), Velocidade (+10%..+30%)
+  let pool = [];
+  // for simplicity present 6 random options (some may repeat)
+  for(let i=0;i<6;i++){
+    const typeRoll = rndInt(1,4);
+    if(typeRoll===1){
+      pool.push({type:'qty', value:rndInt(1,10), label:`Quantidade +${rndInt(1,10)}`});
+    } else if(typeRoll===2){
+      pool.push({type:'dmg', value:rndInt(1,10), label:`Dano +${rndInt(1,10)}`});
+    } else if(typeRoll===3){
+      pool.push({type:'hp', value:rndInt(2,10), label:`HP +${rndInt(2,10)}`});
+    } else {
+      pool.push({type:'spd', value: (rndInt(10,30)), label:`Velocidade +${rndInt(10,30)}%`});
+    }
+  }
+  // show in popup
+  const popup = document.getElementById('upgradePopup');
+  const list = document.getElementById('upgradeList');
+  list.innerHTML = '';
+  pool.forEach((opt, idx)=>{
+    const div = document.createElement('div');
+    div.className = 'upgradeOption';
+    div.dataset.idx = idx;
+    div.innerHTML = `<strong>${opt.label}</strong> <div class="small">(${opt.type.toUpperCase()})</div>`;
+    list.appendChild(div);
+  });
+  // selection logic
+  let selected = [];
+  list.querySelectorAll('.upgradeOption').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const idx = parseInt(el.dataset.idx);
+      if(selected.includes(idx)){
+        selected = selected.filter(x=>x!==idx);
+        el.classList.remove('selected');
+      } else {
+        if(selected.length<2){
+          selected.push(idx);
+          el.classList.add('selected');
+        } else {
+          // replace first selected
+          selected.shift();
+          document.querySelectorAll('.upgradeOption.selected')[0].classList.remove('selected');
+          selected.push(idx);
+          el.classList.add('selected');
+        }
+      }
+      document.getElementById('applyUpgrades').disabled = selected.length !== 2;
+    });
+  });
+  // when apply, distribute upgrades:
+  document.getElementById('applyUpgrades').onclick = ()=>{
+    const chosen = selected.map(i=>pool[i]);
+    // Player's team chooses their 2; the rest of teams choose randomly (we'll pick random from pool)
+    applyUpgradeToTeam(playerTeam, chosen[0]);
+    applyUpgradeToTeam(playerTeam, chosen[1]);
+    // for other teams choose 2 random options each
+    teams.forEach(t=>{
+      if(t===playerTeam) return;
+      let opts = [];
+      // pick two random from pool
+      let copy = pool.slice();
+      for(let k=0;k<2;k++){
+        let r = copy.splice(rndInt(0,copy.length-1),1)[0];
+        opts.push(r);
+      }
+      applyUpgradeToTeam(t, opts[0]);
+      applyUpgradeToTeam(t, opts[1]);
+    });
+    // close popup and start next generation
+    popup.style.display = 'none';
+    nextGeneration();
+    // reset apply button
+    document.getElementById('applyUpgrades').disabled = true;
+  };
+  popup.style.display = 'flex';
+}
+
+// apply upgrade object to a team (accumulate)
+function applyUpgradeToTeam(team, opt){
+  if(!opt) return;
+  if(opt.type === 'qty'){
+    upgrades[team].qtyAdd = (upgrades[team].qtyAdd || 0) + opt.value;
+  } else if(opt.type === 'dmg'){
+    upgrades[team].dmgAdd = (upgrades[team].dmgAdd || 0) + opt.value;
+  } else if(opt.type === 'hp'){
+    upgrades[team].hpAdd = (upgrades[team].hpAdd || 0) + opt.value;
+  } else if(opt.type === 'spd'){
+    let pct = opt.value / 100;
+    upgrades[team].spdMul = (upgrades[team].spdMul || 1) * (1 + pct);
+  }
+  // update display stats if player's team
+  updateUI();
+}
+
+// end of all generations -> final results
+function endGame(){
+  running = false;
+  // compute final scores: teamData[t].kills aggregated already. Add +10 per TGA collected each generation to final tally
+  const final = {};
+  teams.forEach(t=>{
+    final[t] = { kills: teamData[t].kills, tga: teamData[t].tgaCount, finalScore: teamData[t].kills + teamData[t].tgaCount*10 };
+  });
+  // find winner by finalScore
+  let winner = teams.slice().sort((a,b)=> final[b].finalScore - final[a].finalScore )[0];
+  // show popup
+  const p = document.getElementById('endPopup');
+  const res = document.getElementById('finalResults');
+  res.innerHTML = `<p><strong>Vencedor:</strong> ${teamData[winner].name} (${winner.toUpperCase()})</p>`;
+  res.innerHTML += `<ul style="color:#dfe;">` + teams.map(t=>`<li>${teamData[t].name} (${t.toUpperCase()}): kills ${final[t].kills}, TGAs ${final[t].tga}, pontuação final ${final[t].finalScore}</li>`).join('') + `</ul>`;
+  p.style.display = 'flex';
+}
+
+// update UI DOM
+function updateUI(){
+  document.getElementById('timer').innerText = `${Math.floor(genTimeLeft/60).toString().padStart(2,'0')}:${Math.floor(genTimeLeft%60).toString().padStart(2,'0')}`;
+  document.getElementById('countBlue').innerText = entities.filter(e=> e instanceof Square && e.team==='blue' && !e.dead).length;
+  document.getElementById('countGreen').innerText = entities.filter(e=> e instanceof Square && e.team==='green' && !e.dead).length;
+  document.getElementById('countGray').innerText = entities.filter(e=> e instanceof Square && e.team==='gray' && !e.dead).length;
+  document.getElementById('countRed').innerText = entities.filter(e=> e instanceof Square && e.team==='red' && !e.dead).length;
+
+  // player's team status shown (effective)
+  if(playerTeam){
+    const t = playerTeam;
+    const qty = teamData[t].qtyBase + (upgrades[t].qtyAdd||0);
+    const dmg = teamData[t].dmgBase + (upgrades[t].dmgAdd||0);
+    const hp = teamData[t].hpBase + (upgrades[t].hpAdd||0);
+    const spd = Math.round(teamData[t].spdBase * (upgrades[t].spdMul||1));
+    document.getElementById('stat_qty').innerText = qty;
+    document.getElementById('stat_dmg').innerText = dmg;
+    document.getElementById('stat_hp').innerText = hp;
+    document.getElementById('stat_spd').innerText = spd;
+  }
+
+  // scoreboard
+  document.getElementById('scoreBlue').innerText = teamData.blue.kills;
+  document.getElementById('scoreGreen').innerText = teamData.green.kills;
+  document.getElementById('scoreGray').innerText = teamData.gray.kills;
+  document.getElementById('scoreRed').innerText = teamData.red.kills;
+
+  document.getElementById('tgaBlue').innerText = teamData.blue.tgaCount;
+  document.getElementById('tgaGreen').innerText = teamData.green.tgaCount;
+  document.getElementById('tgaGray').innerText = teamData.gray.tgaCount;
+  document.getElementById('tgaRed').innerText = teamData.red.tgaCount;
+}
+
+// buttons
+document.getElementById('endGenBtn').addEventListener('click', ()=>{
+  if(running) endGeneration();
+});
+
+document.getElementById('restartBtn').addEventListener('click', ()=>{
+  document.getElementById('endPopup').style.display = 'none';
+  // reset data
+  for(let t of teams){
+    teamData[t].kills = 0;
+    teamData[t].tgaCount = 0;
+    upgrades[t] = { qtyAdd:0, dmgAdd:0, hpAdd:0, spdMul:1 };
+  }
+  nextGeneration();
+});
+
+// initial render of title area
+ctx.fillStyle = '#022';
+ctx.fillRect(0,0,50,50);
+
+// start loop
+requestAnimationFrame(loop);
+
+// Launch initial screen
+startGame();
+</script>
+</body>
+</html>
